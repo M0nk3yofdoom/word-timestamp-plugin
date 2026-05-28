@@ -1,0 +1,256 @@
+/** src/ui/styles.css — WordTimestamp task pane styling */
+
+/* Reset & base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #1a1a2e;
+  background: #f8f9fa;
+  padding: 16px;
+  min-width: 300px;
+}
+
+/* Error banner */
+.error-banner {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  display: none;
+}
+
+.error-banner.visible {
+  display: block;
+}
+
+/* Debug info panel */
+.debug-panel {
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  display: none;
+}
+
+.debug-panel.visible {
+  display: block;
+}
+
+.debug-panel code {
+  color: #38bdf8;
+}
+
+/* Header */
+h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Status badge */
+.badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.badge.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.badge.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Buttons */
+.btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  flex: 1;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+.btn-primary:not(:disabled):hover { background: #1d4ed8; }
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #334155;
+}
+.btn-secondary:not(:disabled):hover { background: #cbd5e1; }
+
+.btn-success {
+  background: #16a34a;
+  color: white;
+}
+.btn-success:not(:disabled):hover { background: #15803d; }
+
+.btn-danger {
+  background: #dc2626;
+  color: white;
+}
+.btn-danger:not(:disabled):hover { background: #b91c1c; }
+
+/* Info panel */
+.info {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.info-label {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.info-value {
+  font-weight: 500;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #334155;
+}
+
+/* Timeline */
+.timeline-area {
+  margin-bottom: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.timeline-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timeline-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #3b82f6, #16a34a);
+  border-radius: 4px;
+  transition: width 0.1s linear;
+}
+
+/* Playback controls */
+.playback-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.seek-slider {
+  flex: 1;
+  height: 4px;
+}
+
+.speed-select {
+  padding: 4px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 11px;
+  background: white;
+  min-width: 55px;
+}
+
+/* Event list */
+.event-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.ev-row {
+  display: flex;
+  gap: 6px;
+  padding: 3px 4px;
+  font-size: 11px;
+  border-bottom: 1px solid #f1f5f9;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.ev-row:last-child {
+  border-bottom: none;
+}
+
+.event-time {
+  color: #3b82f6;
+  min-width: 45px;
+  flex-shrink: 0;
+}
+
+.event-kind {
+  color: #16a34a;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+/* Section header */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}

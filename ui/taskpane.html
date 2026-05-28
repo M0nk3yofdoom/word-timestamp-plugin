@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>WordTimestamp</title>
+   <link rel="stylesheet" href="styles.css">
+</head>
+<body class="container">
+
+   <!-- Error banner (hidden by default) -->
+   <div id="errorBanner" class="error-banner"></div>
+
+   <!-- Debug panel (hidden, for troubleshooting) -->
+   <div id="debugPanel" class="debug-panel"></div>
+
+   <!-- Header -->
+   <h1>⏱ WordTimestamp <span id="statusBadge" class="badge">Ready</span></h1>
+
+   <!-- Recording controls -->
+   <div class="controls">
+     <button id="btnRecord"       class="btn btn-primary">🔴 Record</button>
+     <button id="btnStop"         class="btn btn-secondary" disabled>⏹ Stop</button>
+     <button id="btnPause"        class="btn btn-success" disabled>⏸ Pause</button>
+   </div>
+
+   <!-- Recording info -->
+   <div class="info">
+     <div class="info-row"><span class="info-label">Session:</span><span id="sessionId"  class="info-value">—</span></div>
+     <div class="info-row"><span class="info-label">Doc Title:</span><span id="docTitle"   class="info-value">—</span></div>
+     <div class="info-row"><span class="info-label">Events:</span><span  id="eventCount"  class="info-value">0 events</span></div>
+     <div class="info-row"><span class="info-label">Duration:</span><span id="recordingTime"class="info-value">—</span></div>
+     <div class="info-row"><span class="info-label">Last Save:</span><span id="lastSave"    class="info-value">—</span></div>
+   </div>
+
+   <!-- Timeline bar (fills up as recording progresses) -->
+   <div class="timeline-area" id="timelineArea" style="display:none">
+     <div class="timeline-bar" id="timelineBar">
+       <div  id="timelineFill"class="timeline-fill"></div>
+     </div>
+   </div>
+
+   <!-- Playback controls (shown after recording stopped) -->
+   <div class="playback-controls" id="playbackControls" style="display:none">
+     <button id="btnPlay"           class="btn btn-success">▶ Play</button>
+     <input  id="seekSlider"       class="seek-slider" type="range" min="0" max="100" value="0">
+     <span   id="seekLabel"        class="info-value" style="min-width:52px;text-align:right;">0s</span>
+     <select id="speedSelect"      class="speed-select">
+       <option value="0.25">0.25×</option>
+       <option value="1" selected>1×</option>
+       <option value="2">2×</option>
+       <option value="4">4×</option>
+       <option value="8">8×</option>
+       <option value="16">16×</option>
+       <option value="32">32×</option>
+     </select>
+   </div>
+
+   <!-- Storage actions -->
+   <div class="controls" id="storageActions" style="display:none; margin-top:8px;">
+     <button id="btnSaveLocal"    class="btn btn-secondary">💾 Save Local</button>
+     <button id="btnExportWtp"    class="btn btn-primary">📄 Export .wtp</button>
+   </div>
+
+   <!-- Import & clear -->
+   <div class="controls" style="margin-top:8px;">
+     <label  id="btnImportWtp" class="btn btn-success" style="cursor:pointer;flex:1;">
+        📂 Import .wtp<input id="fileInput" type="file" accept=".wtp" style="display:none">
+     </label>
+     <button id="btnClearEvents" class="btn btn-danger">🗑 Clear</button>
+   </div>
+
+   <!-- Save document helper -->
+   <div class="controls" style="margin-top:8px;">
+     <button id="btnSaveDoc" class="btn btn-secondary">💾 Save Document</button>
+   </div>
+
+   <!-- Event list (scrollable) -->
+   <div id="sectionLabel" class="section-label">Event Log</div>
+   <div class="event-list"   id="eventList"></div>
+
+   <!-- Office.js library -- load from CDN for reliability -->
+   <script src="https://appsforoffice.microsoft.com/assets/webpack/1.10.2/Office.bundle.min.js"></script>
+   <script type="module" src="./taskpane.js"></script>
+</body>
+</html>
