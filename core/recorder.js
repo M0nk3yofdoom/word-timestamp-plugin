@@ -1,11 +1,5 @@
 /** src/core/recorder.js — Captures Word document change events with timestamps */
 
-// OfficeJS hooks must be globally available for Word integration
-let officeHooks = { onDocumentChanged: null, isRecordingSessionActive: false };
-
-window.WordTimestampPlugins = window.WordTimestampPlugins || {};
-window.WordTimestampPlugins.onRecStart = (callback) => { officeHooks.onDocumentChanged = callback; };
-
 class Recorder {
   constructor() {
     this.recording = false;
@@ -25,11 +19,9 @@ class Recorder {
   async start() {
     if (this.recording) return false;
 
-    console.log('[RECORDER.start] Attempting to start recording...'); 
-
     this.sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+       ? crypto.randomUUID()
+       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     this.entries = [];
     this.recording = true;
     this.paused = false;
@@ -37,25 +29,25 @@ class Recorder {
     this._pauseElapsed = 0;
     this._pausedAt = null;
 
-     // Capture user identity and doc title from Office context
-     try {
-     await Word.run(async (ctx) => {
-      const doc = ctx.document;
-      doc.load('name');
-      await ctx.sync();
+    // Capture user identity and doc title from Office context
+    try {
+      await Word.run(async (ctx) => {
+        const doc = ctx.document;
+        doc.load('name');
+        await ctx.sync();
         this.docTitle = doc.name || 'Untitled';
 
         // Store handler reference so we can remove it on stop
         const self = this;
         this._handlerRef = (event) => {
-         if (!self.recording || self.paused) {
-           event.completed?.();
-           return;
-            }
+          if (!self.recording || self.paused) {
+            event.completed?.();
+            return;
+          }
 
-         try {
-           // Process each change in the batch
-           const changes = event.all || [];
+          try {
+            // Process each change in the batch
+            const changes = event.all || [];
             if (changes.length === 0) {
               event.completed?.();
               return;
@@ -110,29 +102,21 @@ class Recorder {
       ops: []
     };
 
-    // Capture old and new text from the changed range
     try {
-      const ops = [];
-      for (const c of change) {
-        const op = {
+      // The change might be a single operation object or an array of them
+      const changes = Array.isArray(change) ? change : [change];
+      for (const c of changes) {
+        entry.ops.push({
           d: c.oldText || '',
           i: c.newText || '',
-          o: c.id || 0, // Use the change ID as offset reference
-          r: c.rangeId || '' // Store range ID for reference
-        };
-        ops.push(op);
-      }
-      entry.ops = ops;
-    } catch (_) {
-      // Fallback: generic change record
-      const genericChange = Array.isArray(change) ? change : [change];
-      for (const c of genericChange) {
-        entry.ops.push({
-          d: '',
-          i: String(c).slice(0, 100),
-          o: 0
+          o: c.id || 0,
+          r: c.rangeId || ''
         });
       }
+    } catch (err) {
+      console.error('[WordTimestamp] Error parsing change:', err);
+      // Fallback to a generic entry if something goes wrong
+      entry.ops = [{ d: '', i: String(change).slice(0, 50), o: 0 }];
     }
 
     return entry;
