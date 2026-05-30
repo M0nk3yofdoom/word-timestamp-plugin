@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bt="http://schemas.microsoft.com/office/officeappbaselines/1.0"
+    xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+    xsi:type="TaskPaneApp">
+
+     <Id>2747b83b-9929-4828-ba99-eb2aa22fce8d</Id>
+     <Version>1.0.0.0</Version>
+     <ProviderName>M0nk3y</ProviderName>
+     <DefaultLocale>en-US</DefaultLocale>
+     <DisplayName DefaultValue="WordTimestamp"/>
+     <Description DefaultValue="Record document edits with timestamps for authorship evidence."/>
+
+     <Hosts>
+       <Host Name="Document"/>
+     </Hosts>
+
+     <Requirements>
+       <Sets>
+         <Set Name="WordApi" MinVersion="1.7"/>
+       </Sets>
+     </Requirements>
+
+     <!-- Task pane version overrides for modern Word desktop apps -->
+     <Overrides>
+           <Override Path="core/taskpane.html" Id="taskpane"/>
+     </Overrides>
+
+     <Permissions>ReadWriteDocument</Permissions>
+
+     <!-- Task pane version overrides for modern Word desktop apps -->
+     <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1">
+
+       <Hosts>
+         <Host xsi:type="DesktopNativeHost"/>
+       </Hosts>
+
+       <Settings>
+         <SourceLocation DefaultValue="https://m0nk3yofdoom.github.io/word-timestamp-plugin/core/taskpane.html"/>
+       </Settings>
+     </VersionOverrides>
+
+     </VersionOverrides>
+
+</OfficeApp>
