@@ -1,5 +1,11 @@
 /** src/core/recorder.js — Captures Word document change events with timestamps */
 
+// OfficeJS hooks must be globally available for Word integration
+let officeHooks = { onDocumentChanged: null, isRecordingSessionActive: false };
+
+window.WordTimestampPlugins = window.WordTimestampPlugins || {};
+window.WordTimestampPlugins.onRecStart = (callback) => { officeHooks.onDocumentChanged = callback; };
+
 class Recorder {
   constructor() {
     this.recording = false;
@@ -19,9 +25,11 @@ class Recorder {
   async start() {
     if (this.recording) return false;
 
+    console.log('[RECORDER.start] Attempting to start recording...'); 
+
     this.sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
-       ? crypto.randomUUID()
-       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     this.entries = [];
     this.recording = true;
     this.paused = false;
@@ -29,25 +37,25 @@ class Recorder {
     this._pauseElapsed = 0;
     this._pausedAt = null;
 
-    // Capture user identity and doc title from Office context
-    try {
-      await Word.run(async (ctx) => {
-        const doc = ctx.document;
-        doc.load('name');
-        await ctx.sync();
+     // Capture user identity and doc title from Office context
+     try {
+     await Word.run(async (ctx) => {
+      const doc = ctx.document;
+      doc.load('name');
+      await ctx.sync();
         this.docTitle = doc.name || 'Untitled';
 
         // Store handler reference so we can remove it on stop
         const self = this;
         this._handlerRef = (event) => {
-          if (!self.recording || self.paused) {
-            event.completed?.();
-            return;
-          }
+         if (!self.recording || self.paused) {
+           event.completed?.();
+           return;
+            }
 
-          try {
-            // Process each change in the batch
-            const changes = event.all || [];
+         try {
+           // Process each change in the batch
+           const changes = event.all || [];
             if (changes.length === 0) {
               event.completed?.();
               return;
