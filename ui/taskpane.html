@@ -1,85 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <title>WordTimestamp</title>
-   <link rel="stylesheet" href="styles.css">
+     <meta charset="UTF-8">
+     <title>WordTimestamp</title>
+     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="container">
 
-   <!-- Error banner (hidden by default) -->
-   <div id="errorBanner" class="error-banner"></div>
+     <!-- Error banner (hidden by default) -->
+     <div id="errorBanner" class="error-banner"></div>
 
-   <!-- Debug panel (hidden, for troubleshooting) -->
-   <div id="debugPanel" class="debug-panel"></div>
+     <!-- Debug panel (toggle with ctrl+shift+D) -->
+     <div id="debugPanel" class="debug-panel"></div>
 
-   <!-- Header -->
-   <h1>⏱ WordTimestamp <span id="statusBadge" class="badge">Ready</span></h1>
+     <!-- Header -->
+     <header class="header">
+        <svg class="logo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <h1>WordTimestamp</h1>
+        <span id="statusBadge" class="badge">Ready</span>
+     </header>
 
-   <!-- Recording controls -->
-   <div class="controls">
-     <button id="btnRecord"       class="btn btn-primary">🔴 Record</button>
-     <button id="btnStop"         class="btn btn-secondary" disabled>⏹ Stop</button>
-     <button id="btnPause"        class="btn btn-success" disabled>⏸ Pause</button>
-   </div>
-
-   <!-- Recording info -->
-   <div class="info">
-     <div class="info-row"><span class="info-label">Session:</span><span id="sessionId"  class="info-value">—</span></div>
-     <div class="info-row"><span class="info-label">Doc Title:</span><span id="docTitle"   class="info-value">—</span></div>
-     <div class="info-row"><span class="info-label">Events:</span><span  id="eventCount"  class="info-value">0 events</span></div>
-     <div class="info-row"><span class="info-label">Duration:</span><span id="recordingTime"class="info-value">—</span></div>
-     <div class="info-row"><span class="info-label">Last Save:</span><span id="lastSave"    class="info-value">—</span></div>
-   </div>
-
-   <!-- Timeline bar (fills up as recording progresses) -->
-   <div class="timeline-area" id="timelineArea" style="display:none">
-     <div class="timeline-bar" id="timelineBar">
-       <div  id="timelineFill"class="timeline-fill"></div>
+     <!-- Recording controls -->
+     <div class="controls">
+        <button id="btnRecord" class="btn btn-primary">
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+           Record</button>
+        <button id="btnStop" class="btn btn-secondary" disabled>
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+           Stop</button>
+        <button id="btnPause" class="btn btn-success" disabled>
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+           Pause</button>
      </div>
-   </div>
 
-   <!-- Playback controls (shown after recording stopped) -->
-   <div class="playback-controls" id="playbackControls" style="display:none">
-     <button id="btnPlay"           class="btn btn-success">▶ Play</button>
-     <input  id="seekSlider"       class="seek-slider" type="range" min="0" max="100" value="0">
-     <span   id="seekLabel"        class="info-value" style="min-width:52px;text-align:right;">0s</span>
-     <select id="speedSelect"      class="speed-select">
-       <option value="0.25">0.25×</option>
-       <option value="1" selected>1×</option>
-       <option value="2">2×</option>
-       <option value="4">4×</option>
-       <option value="8">8×</option>
-       <option value="16">16×</option>
-       <option value="32">32×</option>
-     </select>
-   </div>
+     <!-- Recording info -->
+     <div class="info">
+        <div class="info-row"><span class="info-label">Session</span><span id="sessionId" class="info-value">—</span></div>
+        <div class="info-row"><span class="info-label">Document</span><span id="docTitle" class="info-value">—</span></div>
+        <div class="info-row"><span class="info-label">Events</span><span id="eventCount" class="info-value">0</span></div>
+        <div class="info-row"><span class="info-label">Duration</span><span id="recordingTime" class="info-value">—</span></div>
+        <div class="info-row"><span class="info-label">Last Save</span><span id="lastSave" class="info-value">—</span></div>
+     </div>
 
-   <!-- Storage actions -->
-   <div class="controls" id="storageActions" style="display:none; margin-top:8px;">
-     <button id="btnSaveLocal"    class="btn btn-secondary">💾 Save Local</button>
-     <button id="btnExportWtp"    class="btn btn-primary">📄 Export .wtp</button>
-   </div>
+     <!-- Playback controls (shown after recording stopped) -->
+     <div class="playback-section" id="playbackSection" style="display:none">
+        <div class="timeline-area">
+           <div class="timeline-bar" id="timelineBar">
+              <div id="timelineFill" class="timeline-fill"></div>
+           </div>
+        </div>
 
-   <!-- Import & clear -->
-   <div class="controls" style="margin-top:8px;">
-     <label  id="btnImportWtp" class="btn btn-success" style="cursor:pointer;flex:1;">
-        📂 Import .wtp<input id="fileInput" type="file" accept=".wtp" style="display:none">
-     </label>
-     <button id="btnClearEvents" class="btn btn-danger">🗑 Clear</button>
-   </div>
+        <div class="playback-controls">
+           <button id="btnPlay" class="btn btn-sm btn-success">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+              Play</button>
+           <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" value="0">
+           <span id="seekLabel" class="info-value seek-label">0s</span>
+           <select id="speedSelect" class="speed-select">
+              <option value="0.25">0.25×</option>
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+              <option value="8">8×</option>
+           </select>
+        </div>
 
-   <!-- Save document helper -->
-   <div class="controls" style="margin-top:8px;">
-     <button id="btnSaveDoc" class="btn btn-secondary">💾 Save Document</button>
-   </div>
+        <!-- Storage actions -->
+        <div class="controls row" id="storageActions">
+           <button id="btnSaveLocal" class="btn btn-sm btn-secondary">Save Local</button>
+           <button id="btnExportWtp" class="btn btn-sm btn-primary">Export .wtp</button>
+        </div>
+     </div>
 
-   <!-- Event list (scrollable) -->
-   <div id="sectionLabel" class="section-label">Event Log</div>
-   <div class="event-list"   id="eventList"></div>
+     <!-- File actions -->
+     <div class="controls row">
+        <label id="btnImportWtp" class="btn btn-sm btn-secondary file-label">
+           Import .wtp<input id="fileInput" type="file" accept=".wtp" style="display:none">
+        </label>
+        <button id="btnClearEvents" class="btn btn-sm btn-danger">Clear</button>
+     </div>
 
-   <!-- Office.js library -- load from CDN for reliability -->
-   <script src="https://appsforoffice.microsoft.com/assets/webpack/1.10.2/Office.bundle.min.js"></script>
-   <script type="module" src="./taskpane.js"></script>
+     <!-- Save document helper -->
+     <div class="controls row">
+        <button id="btnSaveDoc" class="btn btn-sm btn-secondary full">Save Document</button>
+     </div>
+
+     <!-- Event list (scrollable) -->
+     <div class="section-label">Event Log</div>
+     <div class="event-list" id="eventList"></div>
+
+     <!-- Office.js library -->
+     <script src="https://appsforoffice.microsoft.com/assets/webpack/1.10.2/Office.bundle.min.js"></script>
+     <script type="module" src="./taskpane.js"></script>
 </body>
 </html>
