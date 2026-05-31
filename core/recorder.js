@@ -1,4 +1,4 @@
-/** src/core/recorder.js — Captures Word document change events with timestamps */
+/** src/core/recorder.js - Captures Word document change events with timestamps */
 
 class Recorder {
   constructor() {
@@ -11,17 +11,17 @@ class Recorder {
     this.entries = [];
     this._pauseElapsed = 0;
     this._pausedAt = null;
-    this._handlerRef = null; // Store handler reference for cleanup
-    this.onFlush = null;    // optional: async callback after each batch
-    this.onError = null;    // optional: error callback
-  }
+    this._handlerRef = null;
+    this.onFlush = null;
+    this.onError = null;
+    }
 
   async start() {
     if (this.recording) return false;
 
     this.sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
-       ? crypto.randomUUID()
-       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+         ? crypto.randomUUID()
+         : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     this.entries = [];
     this.recording = true;
     this.paused = false;
@@ -30,119 +30,109 @@ class Recorder {
     this._pausedAt = null;
 
     try {
+       // STEP 1: Get document title (async is fine for data reads)
       await Word.run(async (ctx) => {
         const doc = ctx.document;
         doc.load('name');
         await ctx.sync();
         this.docTitle = doc.name || 'Untitled';
+        });
 
-        const self = this;
-        this._handlerRef = (event) => {
-          if (!self.recording || self.paused) {
-            event.completed?.();
-            return;
+       // STEP 2: Define the event handler
+       // IMPORTANT: The callback itself can reference async state freely,
+       // but it must be DEFINED and ADDED in a synchronous Word.run block.
+      const self = this;
+      this._handlerRef = (event) => {
+        if (!self.recording || self.paused) {
+          event.completed?.();
+          return;
           }
 
-          try {
-            // --- ROBUST CHANGE DETECTION ENGINE ---
-            let changes = [];
-            if (event && event.changes) { // Modern Word API
-              changes = event.changes;
-            } else if (event && event.all) { // Older/Other versions
-              changes = event.all;
-            } else if (Array.isArray(event)) { // Direct array fallback
-              changes = event;
-            }
+        try {
+           // event.changes is an array of OnChangedEventDetails objects, each with:
+           //    oldText - text before the change
+           //    newText - text after the change
+          const changes = event?.changes || [];
 
-            if (changes.length === 0) {
-              event.completed?.();
-              return;
-            }
-
-            for (let i = 0; i < changes.length; i++) {
-              const change = changes[i];
-              const entry = Recorder._parseChange(change, self._relativeMs());
-              if (entry) {
-                self.entries.push(entry);
+          for (let i = 0; i < changes.length; i++) {
+            const change = changes[i];
+            const entry = Recorder._parseChange(change, self._relativeMs());
+            if (entry) {
+              self.entries.push(entry);
               }
             }
 
-            if (self.onFlush && typeof self.onFlush === 'function') {
-              try { self.onFlush(); } catch (_) {}
+           // Notify UI of new entries
+          if (self.onFlush && typeof self.onFlush === 'function') {
+            try { self.onFlush(); } catch (_) {}
             }
+
           } catch (err) {
-            console.error('[WordTimestamp] Error processing change event:', err);
-            if (self.onError) {
-              try { self.onError({ phase: 'recording', error: err.message }); } catch (_) {}
+          console.error('[WordTimestamp] Error processing change event:', err);
+          if (self.onError) {
+            try { self.onError({ phase: 'recording', error: err.message }); } catch (_) {}
             }
           }
 
-          event.completed?.();
+         // Call completed() to signal Office.js this batch is done.
+        event.completed?.();
         };
 
-        doc.onChanged.add(this._handlerRef);
+       // STEP 3: Register handler in a SYNCHRONOUS Word.run block and sync.
+       // Office.js proxy handlers MUST be added in the same synchronous call stack
+       // as the context object. Must also call ctx.sync() to persist the registration.
+      await Word.run(async (ctx) => {
+        ctx.document.onChanged.add(this._handlerRef);
         await ctx.sync();
-      });
+        });
 
       console.log(`[WordTimestamp] Recording started. Session: ${this.sessionId}`);
       return true;
-    } catch (err) {
+      } catch (err) {
       console.error('[WordTimestamp] Failed to start recording:', err);
       this.recording = false;
       if (this.onError) {
         try { this.onError({ phase: 'start', error: err.message }); } catch (_) {}
-      }
+        }
       return false;
+      }
     }
-  }
 
+  /** Parse a single Word OnChangedEventDetails change into our compact format */
   static _parseChange(change, timestamp) {
     if (!change) return null;
 
     const entry = { t: timestamp, k: 'text', ops: [] };
-
-    try {
-      // Some versions wrap the change in an extra array layer
-      const changes = Array.isArray(change) ? change : [change];
-      for (const c of changes) {
-        entry.ops.push({
-          // Support various property names for compatibility across Word API versions
-          d: c.oldText !== undefined ? c.oldText : (c.before || ''),
-          i: c.newText !== undefined ? c.newText : (c.after || ''),
-          o: c.id || 0,
-          r: c.rangeId || ''
-        });
-      }
-    } catch (err) {
-      console.error('[WordTimestamp] Error parsing change:', err);
-      entry.ops = [{ d: '', i: String(change).slice(0, 50), o: 0 }];
-    }
-
+    const op = {
+      d: change.oldText !== undefined ? change.oldText : '',
+      i: change.newText !== undefined ? change.newText : '',
+      o: 0,
+      r: change.rangeId || ''
+      };
+    entry.ops.push(op);
     return entry;
-  }
+    }
 
   stop() {
     if (!this.recording) return false;
+
+     // Remove handler in a synchronous Word.run block (same async-boundary rule).
     const self = this;
-    Word.run(async (ctx) => {
-      try {
-        const doc = ctx.document;
+    try {
+      Word.run((ctx) => {
         if (self._handlerRef) {
-          doc.onChanged.remove(self._handlerRef);
+          ctx.document.onChanged.remove(self._handlerRef);
           self._handlerRef = null;
-        }
-        await ctx.sync();
-      } catch (err) {
-        console.warn('[WordTimestamp] Warning during stop:', err);
-      }
-    }).catch((err) => {
-      console.error('[WordTimestamp] Error during stop cleanup:', err);
-    });
+          }
+        });
+       } catch (err) {
+      console.error('[WordTimestamp] Error during stop:', err);
+       }
 
     this.recording = false;
     this.paused = false;
     return true;
-  }
+    }
 
   pause() {
     if (!this.recording || this.paused) return false;
@@ -150,7 +140,7 @@ class Recorder {
     this.paused = true;
     this._pausedAt = Date.now();
     return true;
-  }
+    }
 
   resume() {
     if (!this.recording || !this.paused) return false;
@@ -158,23 +148,27 @@ class Recorder {
     this.paused = false;
     this._pausedAt = null;
     return true;
-  }
+    }
 
-  _relativeMs() {
+    _relativeMs() {
     if (!this.startTime) return 0;
     let elapsed = Date.now() - this.startTime - this._pauseElapsed;
     if (this._pausedAt !== null) elapsed -= Date.now() - this._pausedAt;
     return Math.max(0, Math.round(elapsed));
-  }
+    }
 
   clear() {
     this.entries = [];
     this.sessionId = '';
     this.docTitle = null;
+    this.userName = null;
     this.recording = false;
     this.paused = false;
     this._handlerRef = null;
-  }
+    this.startTime = null;
+    this._pauseElapsed = 0;
+    this._pausedAt = null;
+    }
 
   getSnapshot() {
     return {
@@ -185,8 +179,17 @@ class Recorder {
       entryCount: this.entries.length,
       durationMs: this._relativeMs(),
       entries: [...this.entries]
-    };
-  }
+      };
+    }
+
+ /** Process an externally-sourced entry (for importing events) */
+  processEntry(entry) {
+    if (!entry) return;
+    this.entries.push(entry);
+    if (this.onFlush && typeof this.onFlush === 'function') {
+      try { this.onFlush(); } catch (_) {}
+      }
+    }
 }
 
 export { Recorder };

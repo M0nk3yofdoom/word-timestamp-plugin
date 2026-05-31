@@ -5,22 +5,21 @@ export async function sha256hex(text) {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+       .map(b => b.toString(16).padStart(2, '0'))
+       .join('');
 }
 
 /** Build a complete session object ready for storage/export */
-export function buildSession(recorder, userEmail) {
+export function buildSession(recorder) {
   const snapshot = recorder.getSnapshot();
   return {
     version: 1,
     recordedAt: snapshot.recordedAt,
-    authorEmail: userEmail || 'unknown',
     sessionId: snapshot.sessionId,
     docTitle: snapshot.docTitle,
     integrityHash: '', // populated after hashing
     entries: snapshot.entries
-   };
+     };
 }
 
 /** Save session to IndexedDB */
@@ -34,7 +33,7 @@ export async function saveSession(session, db) {
     const req = store.put({ ...session, sId: session.sessionId });
     req.onsuccess = () => resolve(true);
     req.onerror = () => reject(tx.error || new Error('Save failed'));
-   });
+     });
 }
 
 /** Load session from IndexedDB */
@@ -44,34 +43,33 @@ export async function loadSession(sessionId, db) {
     const get = tx.objectStore('sessions').get(sessionId);
     get.onsuccess = () => resolve(get.result || null);
     get.onerror = () => reject(tx.error || new Error('Load failed'));
-   });
+     });
 }
 
 /** Export session as .wtp file (gzip-compressed JSON with integrity hash) */
 export async function exportWtp(session) {
-  // Build canonical JSON for hashing BEFORE compression
+   // Build canonical JSON for hashing BEFORE compression
   const text = JSON.stringify({
     version: session.version,
     recordedAt: session.recordedAt,
-    authorEmail: session.authorEmail,
     sessionId: session.sessionId,
     docTitle: session.docTitle,
     integrityHash: '', // hash will be set separately
     entries: session.entries
-   }, null, 2);
+    }, null, 2);
 
-   // Compute hash of the uncompressed content
+    // Compute hash of the uncompressed content
   const hex = await sha256hex(text);
   const fullSession = {
-    ...session,
+     ...session,
     integrityHash: `sha256-${hex}`
-   };
+     };
   const finalJson = JSON.stringify(fullSession, null, 2);
 
-   // Compress for storage
+    // Compress for storage
   const compressed = await new Response(finalJson)
-      .pipeThrough(new CompressionStream('gzip'))
-      .arrayBuffer();
+       .pipeThrough(new CompressionStream('gzip'))
+       .arrayBuffer();
 
   const blob = new Blob([compressed], { type: 'application/gzip' });
   const url = URL.createObjectURL(blob);
@@ -87,34 +85,55 @@ export async function exportWtp(session) {
   return {
     filename: `${session.docTitle ?? 'recording'}-${session.sessionId}.wtp`,
     size: compressed.byteLength
-   };
+     };
 }
 
 /** Import .wtp file and parse session data */
 export async function importWtp(file) {
   const decompressed = await new Response(file)
-      .pipeThrough(new DecompressionStream('gzip'))
-      .text();
+       .pipeThrough(new DecompressionStream('gzip'))
+       .text();
   const parsed = JSON.parse(decompressed);
 
-   // Verify integrity if hash is present
+    // Verify integrity if hash is present
   if (parsed.integrityHash && typeof parsed.integrityHash === 'string') {
     const tempJson = JSON.stringify({
       version: parsed.version,
       recordedAt: parsed.recordedAt,
-      authorEmail: parsed.authorEmail,
       sessionId: parsed.sessionId,
       docTitle: parsed.docTitle,
       integrityHash: '', // strip for comparison
       entries: parsed.entries
-     }, null, 2);
+      }, null, 2);
     const computed = `sha256-${await sha256hex(tempJson)}`;
 
     if (computed !== parsed.integrityHash) {
       console.warn('[WordTimestamp] Integrity check failed — data may have been altered');
       return { ...parsed, integrityOk: false };
+       }
      }
-  }
 
-   return { ...parsed, integrityOk: true };
+     return { ...parsed, integrityOk: true };
+}
+
+/** List all saved sessions from IndexedDB */
+export async function listSessions(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['sessions'], 'readonly');
+    const store = tx.objectStore('sessions');
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(tx.error || new Error('List failed'));
+     });
+}
+
+/** Delete a session from IndexedDB */
+export async function deleteSession(sessionId, db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['sessions'], 'readwrite');
+    const store = tx.objectStore('sessions');
+    const req = store.delete(sessionId);
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => reject(tx.error || new Error('Delete failed'));
+     });
 }
