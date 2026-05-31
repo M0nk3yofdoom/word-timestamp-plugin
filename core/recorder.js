@@ -29,7 +29,6 @@ class Recorder {
     this._pauseElapsed = 0;
     this._pausedAt = null;
 
-    // Capture user identity and doc title from Office context
     try {
       await Word.run(async (ctx) => {
         const doc = ctx.document;
@@ -37,7 +36,6 @@ class Recorder {
         await ctx.sync();
         this.docTitle = doc.name || 'Untitled';
 
-        // Store handler reference so we can remove it on stop
         const self = this;
         this._handlerRef = (event) => {
           if (!self.recording || self.paused) {
@@ -46,8 +44,16 @@ class Recorder {
           }
 
           try {
-            // Process each change in the batch
-            const changes = event.all || [];
+            // --- ROBUST CHANGE DETECTION ENGINE ---
+            let changes = [];
+            if (event && event.changes) { // Modern Word API
+              changes = event.changes;
+            } else if (event && event.all) { // Older/Other versions
+              changes = event.all;
+            } else if (Array.isArray(event)) { // Direct array fallback
+              changes = event;
+            }
+
             if (changes.length === 0) {
               event.completed?.();
               return;
@@ -61,7 +67,6 @@ class Recorder {
               }
             }
 
-            // Auto-save callback
             if (self.onFlush && typeof self.onFlush === 'function') {
               try { self.onFlush(); } catch (_) {}
             }
@@ -75,7 +80,6 @@ class Recorder {
           event.completed?.();
         };
 
-        // Register the change handler
         doc.onChanged.add(this._handlerRef);
         await ctx.sync();
       });
@@ -92,30 +96,25 @@ class Recorder {
     }
   }
 
-  /** Parse a single Word change event into our compact format */
   static _parseChange(change, timestamp) {
     if (!change) return null;
 
-    const entry = {
-      t: timestamp,
-      k: 'text',
-      ops: []
-    };
+    const entry = { t: timestamp, k: 'text', ops: [] };
 
     try {
-      // The change might be a single operation object or an array of them
+      // Some versions wrap the change in an extra array layer
       const changes = Array.isArray(change) ? change : [change];
       for (const c of changes) {
         entry.ops.push({
-          d: c.oldText || '',
-          i: c.newText || '',
+          // Support various property names for compatibility across Word API versions
+          d: c.oldText !== undefined ? c.oldText : (c.before || ''),
+          i: c.newText !== undefined ? c.newText : (c.after || ''),
           o: c.id || 0,
           r: c.rangeId || ''
         });
       }
     } catch (err) {
       console.error('[WordTimestamp] Error parsing change:', err);
-      // Fallback to a generic entry if something goes wrong
       entry.ops = [{ d: '', i: String(change).slice(0, 50), o: 0 }];
     }
 
@@ -124,8 +123,6 @@ class Recorder {
 
   stop() {
     if (!this.recording) return false;
-
-    // Remove the change handler - we need to do this in Word context
     const self = this;
     Word.run(async (ctx) => {
       try {
@@ -144,38 +141,29 @@ class Recorder {
 
     this.recording = false;
     this.paused = false;
-    console.log(`[WordTimestamp] Recording stopped. Captured ${this.entries.length} events.`);
     return true;
   }
 
   pause() {
     if (!this.recording || this.paused) return false;
-    if (this._pausedAt !== null) {
-      this._pauseElapsed += Date.now() - this._pausedAt;
-    }
+    if (this._pausedAt !== null) this._pauseElapsed += Date.now() - this._pausedAt;
     this.paused = true;
     this._pausedAt = Date.now();
-    console.log('[WordTimestamp] Recording paused');
     return true;
   }
 
   resume() {
     if (!this.recording || !this.paused) return false;
-    if (this._pausedAt !== null) {
-      this._pauseElapsed += Date.now() - this._pausedAt;
-    }
+    if (this._pausedAt !== null) this._pauseElapsed += Date.now() - this._pausedAt;
     this.paused = false;
     this._pausedAt = null;
-    console.log('[WordTimestamp] Recording resumed');
     return true;
   }
 
   _relativeMs() {
     if (!this.startTime) return 0;
     let elapsed = Date.now() - this.startTime - this._pauseElapsed;
-    if (this._pausedAt !== null) {
-      elapsed -= Date.now() - this._pausedAt;
-    }
+    if (this._pausedAt !== null) elapsed -= Date.now() - this._pausedAt;
     return Math.max(0, Math.round(elapsed));
   }
 
@@ -183,16 +171,11 @@ class Recorder {
     this.entries = [];
     this.sessionId = '';
     this.docTitle = null;
-    this.userName = null;
     this.recording = false;
     this.paused = false;
-    this.startTime = null;
-    this._pauseElapsed = 0;
-    this._pausedAt = null;
     this._handlerRef = null;
   }
 
-  /** Get a snapshot of current recording data for export */
   getSnapshot() {
     return {
       version: 1,
