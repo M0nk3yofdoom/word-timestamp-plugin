@@ -413,25 +413,20 @@ Office.onInitialized(async function() {
   try {
     initElements();
 
-      // Get user identity from Office context
+     // Get user identity from Office context
     try {
       const ctx = await Office.context.mailbox?.getUserSettingsAsync(['emailAddress']);
       if (ctx && ctx.value) userEmail = ctx.value['emailAddress'] || 'unknown';
-       // Alternative approach for newer APIs
+      // Alternative approach for newer APIs
       if (userEmail === 'unknown' && Office.context.mailbox?.userSettings?.emailAddress) {
         userEmail = Office.context.mailbox.userSettings.emailAddress;
-        }
-    } catch (_) { /* Use default */ }
+       }
+     } catch (_) { /* Use default */ }
 
      // Ensure IndexedDB is ready
     try { await openDb(); } catch (dbErr) {
       console.warn('[WordTimestamp] IndexedDB not available — local saves will fail', dbErr);
-      }
-
-    console.log(`[WordTimestamp] User: ${userEmail}`);
-
-      // Wire up all event handlers
-    domElements.btnRecord.addEventListener('click', onStartRecording);
+     }
 
     console.log(`[WordTimestamp] User: ${userEmail}`);
 
@@ -455,65 +450,6 @@ Office.onInitialized(async function() {
       updateDebug();
      }, 2000);
    } catch (err) {
-   console.error('[WordTimestamp] Initialization error:', err);
-   } finally {
-    
-   // ────────────────────────────────
-   // GLOBAL POLLING LOOP STARTS HERE
-   // ────────────────────────────────
-    
-   // This closes the gap that Word.run()'s doc.onChanged.add() doesn't persist beyond sync.
-   // We poll Word.document.changedEvents every 50ms while recording is active.
-    
-   const plugin = window.WordTimestampPluginInstance;
-    
-   if (plugin) {
-    setTimeout(() => {
-        // This will keep polling indefinitely until clearInterval is called in stop()
-        const checkChangedPolling = setInterval(() => {
-            try {
-                // Check for any changes in Word.document since last poll
-                if (Word.document.changedEvents && Word.document.changedEvents.length > 0) {
-                    if (plugin._activeRecorder && plugin._activeRecorder.recording) {
-                        console.log('[WordTimestamp] Detected document change, processing:', Word.document.changedEvents.length, 'change(s)...');
-                         
-                        // Process all changes from this poll - merge into single entry  
-                        const changes = Word.document.changedEvents;
-                        let entry = {
-                            t: Date.now(),   // timestamp
-                            k: 'text',         // change type
-                            ops: []           // list of operations
-                        };
-                         
-                        // Process each character/text change detected
-                        for (const change of changes) {
-                            if (change.action) {
-                                entry.ops.push({
-                                    d: change.oldText || '',    // deleted characters
-                                    i: change.newText || '',       // inserted characters  
-                                    o: change.id || 0,           // offset in string
-                                    r: ''                        // range reference
-                                });
-                            }
-                        };
-                         
-                        if (entry.ops.length > 0) {
-                            plugin._activeRecorder.processEntry(entry);
-                             
-                            console.log(`[WordTimestamp] Captured ${entry.ops.length} operation(s)`);
-                        }
-                    }
-                }
-            } catch(e) {
-               console.warn('[WordTimestamp] Error in change poll handler:', e);
-            }
-        }, 50); // Poll every 50ms 
-          
-         // Store globally so stop() can remove it with clearInterval
-        plugin.pollingIntervalId = pollingId;
-      });
-    });
+    console.error('[WordTimestamp] Initialization error:', err);
    }
-   ```
-   */
-
+});
