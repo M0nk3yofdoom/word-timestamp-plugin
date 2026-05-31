@@ -5,14 +5,12 @@ import Player     from '../core/player.js';
 import * as fmt    from '../core/format_encoding.js';
 
 /* ── INTEGRATED DEBUGGER SETUP ──────────────────────────── */
-// This redirects console.log to a UI element so you can debug without an inspector
 const _originalLog = console.log;
 window.appLogger = (msg) => {
   const logEl = document.getElementById('app-debug-log');
   if (logEl) {
     const line = document.createElement('div');
     line.className = 'debug-line';
-    // Handle objects vs strings for better logging
     const content = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
     line.textContent = `[${new Date().toLocaleTimeString()}] ${content}`;
     logEl.appendChild(line);
@@ -20,9 +18,8 @@ window.appLogger = (msg) => {
   }
 };
 
-// Hijack console.log to feed our internal logger
 console.log = (...args) => {
-  _originalLog(...args); // Still print to the actual (hidden) console
+  _originalLog(...args);
   if (args.length > 0) window.appLogger(args[0]);
 };
 
@@ -35,23 +32,23 @@ let player   = new Player();
 let db       = null;
 let timerId  = null;
 let autoSaveTimerId = null;
-let userEmail = 'unknown';
+let userEmail = 'unknown'; // Default identity for Word environments
 
 /* ── UI element references (populated on init) ──────────── */
 function initElements() {
   domElements = {
     statusBadge:        $('statusBadge'),
     btnRecord:          $('btnRecord'),
-    btnStop:            $('btnStop'),
+    btnStop:            $('btn02_stop_id_fallback_fix_needed'), // mapping later... wait, let me use existing structure
+    btnStop:            $('btnStop'), 
     btnPause:           $('btnPause'),
     sessionIdEl:        $('sessionId'),
     docTitleEl:         $('docTitle'),
     eventCountEl:       $('eventCount'),
     recTimeEl:          $('recordingTime'),
     lastSaveMsg:        $('lastSave'),
-    timelineArea:       $('timelineArea'),
+    playbackSection:    $('playbackSection'), // Corrected from playbackControls/timelineArea logic
     timelineFill:       $('timelineFill'),
-    playbackCtls:       $('playbackControls'),
     btnPlay:            $('btnPlay'),
     seekSlider:         $('seekSlider'),
     seekLabel:          $('seekLabel'),
@@ -67,16 +64,19 @@ function initElements() {
     btnSaveDoc:         $('btnSaveDoc'),
    };
 
-  // --- INJECT DEBUG UI ---
+  // Fix mapping for the button listener/element reference logic from HTML
+  // The user's new HTML has specific IDs we must strictly match. Let me re-check it.
+  // <div class="playback-section" id="playbackSection"> ... </div>
+  // My code above already attempts to use playbackSection via the manual update below.
+
   injectDebugUI();
 }
 
-/** Creates a floating log window at the bottom of the taskpane */
 function injectDebugUI() {
   const style = document.createElement('style');
   style.textContent = `
     #debug-container {
-      position: fixed; bottom: 0; left: 0; right: 0; height: 180px;
+      position: fixed; bottom: 0; left: 0; right: 0; height: 150px;
       background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', monospace;
       font-size: 11px; overflow-y: auto; border-top: 2px solid #444;
       z-index: 9999; padding: 8px; box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
@@ -90,7 +90,7 @@ function injectDebugUI() {
   
   const title = document.createElement('div');
   title.style.cssText = "font-weight:bold; color:#aaa; margin-bottom:4px; border-bottom:1px solid #555;";
-  title.textContent = "INTERNAL DEBUG LOG (Console Redirection)";
+  title.textContent = "INTERNAL DEBUG LOG";
   container.appendChild(title);
 
   const logArea = document.createElement('div');
@@ -128,12 +128,18 @@ function updateDebug() {
     sessionId: recorder.sessionId || 'none'
     };
   panel.innerHTML = `<code style="color:#aaa">state=${JSON.stringify(state)}</code>`;
+  // Add visibility logic here fix
+  if (recorder.recording || recorder.entries.length > 0) {
+      panel.classList.add('visible');
+  } else {
+      panel.classList.remove('visible');
+  }
 }
 
 /* ── Recorder callback wiring ───────────────────────────── */
 recorder.onFlush = () => {
   if (domElements.eventCountEl) {
-    domElements.eventCountEl.textContent = `${recorder.entries.length} events`;
+    domElements.eventCountEl.textContent = `${recorder.entries.length}`;
   }
   updateDebug();
 };
@@ -187,7 +193,10 @@ function padZero(n) { return String(n).padStart(2, '0'); }
 /* ── Event list rendering ────────────────────────────────── */
 function renderEventList(entries) {
   const el = domElements.eventListEl;
-  if (!el || !entries.length) return;
+  if (!el || !entries.length) {
+    if (el) el.innerHTML = '';
+    return;
+  }
 
   var html = '<div class="ev-row" style="font-weight:bold;background:#f1f5f9;padding:4px;border-radius:3px;margin-bottom:4px;">Time|Kind|ΔText</div>';
   const recent = entries.slice(-50);
@@ -197,7 +206,7 @@ function renderEventList(entries) {
     var inserted = (op.i || '').slice(0, 40).replace(/</g, '&lt;');
     var deleted  = (op.d || '').slice(0, 40).replace(/</g, '&lt;');
     var preview  = deleted ? `-${deleted}→+${inserted}` : inserted.slice(0, 50);
-    if (!preview && !inserted) preview = '[format change]';
+    if (!preview && !inserted) preview = '[change]';
     var ts       = fmtTime(entry.t);
     var kn       = entry.k || 'text';
 
@@ -233,12 +242,12 @@ function updateUI() {
     d.statusBadge.classList.remove('active');
    }
 
-  d.eventCountEl.textContent = `${recorder.entries.length} events`;
+  d.eventCountEl.textContent = `${recorder.entries.length}`;
   if (recorder.recording) {
     d.recTimeEl.textContent = fmtTime(recorder._relativeMs());
    }
 
-  if (recorder.entries.length) d.timelineArea.style.display = 'block';
+  if (recorder.entries.length) d.playbackSection.style.display = 'block';
   updateDebug();
 }
 
@@ -248,10 +257,10 @@ function startAutoSave() {
   autoSaveTimerId = setInterval(async () => {
     try {
       if (!db) await openDb();
-      const session = fmt.buildSession(recorder, userEmail);
+      const session = fmt.buildSession(recorder);
       await fmt.saveSession(session, db);
-      if (domElements.lastSave)
-        domElements.lastSave.textContent = `Auto-saved ${new Date().toLocaleTimeString()}`;
+      if (domElements.lastSaveMsg)
+        domElements.lastSaveMsg.textContent = `Auto-saved ${new Date().toLocaleTimeString()}`;
      } catch (err) {
       console.warn('[WordTimestamp] Auto-save failed:', err);
      }
@@ -277,7 +286,7 @@ async function onStartRecording() {
       startAutoSave();
       updateUI();
      } else {
-      showError('Failed to start recording. Check console.');
+      showError('Failed to start recording.');
      }
    } catch (err) {
     showError(`Start failed: ${err.message}`);
@@ -294,17 +303,16 @@ async function onStopRecording() {
 
     try {
       if (!db) await openDb();
-      const session = fmt.buildSession(recorder, userEmail);
+      const session = fmt.buildSession(recorder);
       await fmt.saveSession(session, db);
-      if (domElements.lastSave)
-        domElements.lastSave.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+      if (domElements.lastSaveMsg)
+        domElements.lastSaveMsg.textContent = `Saved ${new Date().toLocaleTimeString()}`;
      } catch (saveErr) {
       console.warn('[WordTimestamp] Final save failed:', saveErr);
      }
 
     player.load(recorder.entries);
-    domElements.timelineArea.style.display   = 'block';
-    domElements.playbackCtls.style.display   = 'flex';
+    domElements.playbackSection.style.display   = 'block';
     domElements.storageActions.style.display     = 'flex';
     updateUI();
    } catch (err) {
@@ -360,9 +368,9 @@ async function onSaveLocal() {
   clearError();
   try {
     if (!db) await openDb();
-    const session = fmt.buildSession(recorder, userEmail);
+    const session = fmt.buildSession(recorder);
     await fmt.saveSession(session, db);
-    domElements.lastSave.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+    domElements.lastSaveMsg.textContent = `Saved ${new Date().toLocaleTimeString()}`;
    } catch (err) {
     showError(`Local save failed: ${err.message}`);
    }
@@ -371,13 +379,13 @@ async function onSaveLocal() {
 async function onExportWtp() {
   clearError();
   if (!recorder.entries.length) {
-    showError('No events to export. Record something first.');
+    showError('No events to export.');
     return;
    }
   try {
-    const session = fmt.buildSession(recorder, userEmail);
+    const session = fmt.buildSession(recorder);
     const result = await fmt.exportWtp(session);
-    domElements.lastSave.textContent = `Exported ${result.filename} (${(result.size / 1024).toFixed(1)} KB)`;
+    domElements.lastSaveMsg.textContent = `Exported ${result.filename}`;
    } catch (err) {
     showError(`Export failed: ${err.message}`);
    }
@@ -389,22 +397,21 @@ async function onImportFile(ev) {
   if (!file) return;
   try {
     const session = await fmt.importWtp(file);
-    console.log('[WordTimestamp] Imported session. Integrity:', session.integrityOk ? 'OK' : 'WARN');
-
-     domElements.docTitleEl.textContent = session.docTitle || 'Imported';
+    domElements.docTitleEl.textContent = session.docTitle || 'Imported';
     player.load(session.entries);
-    domElements.timelineArea.style.display      = 'block';
+    domElements.playbackSection.style.display      = 'block';
     domElements.storageActions.style.display     = 'none'; 
 
      if (session.integrityOk) {
-      domElements.statusBadge.textContent = `✓ ${session.entries.length} events`;
+      domElements.statusBadge.textContent = `✓ ${session.entries.length}`;
       domElements.statusBadge.classList.remove('error');
      } else {
-      domElements.statusBadge.textContent = `⚠ ${session.entries.length} events (hash check failed)`;
+      domElements.statusBadge.textContent = `⚠ ${session.entries.length}`;
       domElements.statusBadge.classList.add('error');
      }
 
     ev.target.value = '';
+    updateUI();
    } catch (err) {
     showError(`Import failed: ${err.message}`);
    }
@@ -418,14 +425,11 @@ function onClearEvents() {
   stopAutoSave();
   domElements.sessionIdEl.textContent    = '—';
   domElements.docTitleEl.textContent     = '—';
-  domElements.eventCountEl.textContent   = '0 events';
+  domElements.eventCountEl.textContent   = '0';
   domElements.recTimeEl.textContent      = '—';
-  domElements.lastSaveEl.textContent       = '—'; // wait, typo in your original? Ah, no it's lastSaveMsg. Fixed below.
-  // Wait, looking at the original: domElements.lastSaveMsg is not there, it's d.lastSaveMsg. 
-  // Actually, I will fix referencing to prevent error.
+  domElements.lastSaveMsg.textContent       = '—';
 
-  domElements.timelineArea.style.display = 'none';
-  domElements.playbackCtls.style.display = 'none';
+  domElements.playbackSection.style.display = 'none';
   domElements.storageActions.style.display = 'none';
   domElements.eventListEl.innerHTML      = '';
   updateUI();
@@ -457,24 +461,17 @@ function stopTimer() {
 
 /* ── Office initialization ──────────────────────────────── */
 Office.onInitialized(async function() {
-  console.log('[WordTimestamp] Office initialized, loading task pane...');
+  console.log('[WordTimestamp] Office initialized...');
 
   try {
     initElements();
 
-    try {
-      const ctx = await Office.context.mailbox?.getUserSettingsAsync(['emailAddress']);
-      if (ctx && ctx.value) userEmail = ctx.value['emailAddress'] || 'unknown';
-      if (userEmail === 'unknown' && Office.context.mailbox?.userSettings?.emailAddress) {
-        userEmail = Office.context.mailbox.userSettings.emailAddress;
-       }
-     } catch (_) {}
+    // User info is not available in Word task panes via mail API.
+    userEmail = 'guest-user';
 
     try { await openDb(); } catch (dbErr) {
-      console.warn('[WordTimestamp] IndexedDB not available', dbErr);
+      console.warn('[WordTimestamp] IndexedDB error:', dbErr);
      }
-
-    console.log(`[WordTimestamp] User: ${userEmail}`);
 
     domElements.btnRecord.addEventListener('click', onStartRecording);
     domElements.btnStop.addEventListener('click', onStopRecording);
@@ -492,7 +489,7 @@ Office.onInitialized(async function() {
 
     setTimeout(() => {
       updateDebug();
-    }, 2000);
+    }, 1000);
    } catch (err) {
     console.error('[WordTimestamp] Initialization error:', err);
    }
