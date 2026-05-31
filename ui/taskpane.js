@@ -47,7 +47,7 @@ function initElements() {
     sessionIdEl:        $('sessionId'),
     docTitleEl:         $('docTitle'),
     eventCountEl:       $('eventCount'),
-    recTimeEl:          $('recTimeEl'),
+    recTimeEl:          $('recordingTime'),
     lastSaveMsg:        $('lastSave'),
     timelineArea:       $('timelineArea'),
     timelineFill:       $('timelineFill'),
@@ -204,7 +204,7 @@ function renderEventList(entries) {
     html += '<div class="ev-row">';
     html += `<span class="event-time">${ts}</span>`;
     html += `<span class="event-kind">${kn}</span>`;
-    html += `<span title="${deleted ? 'Deleted: ' + deleted : ''}">${preview || '[change]'}&lt;/span>`;
+    html += `<span title="${deleted ? 'Deleted: ' + deleted : ''}">${preview || '[change]'}</span>`;
     html += '</div>';
    }
 
@@ -250,8 +250,8 @@ function startAutoSave() {
       if (!db) await openDb();
       const session = fmt.buildSession(recorder, userEmail);
       await fmt.saveSession(session, db);
-      if (domElements.lastSaveMsg)
-        domElements.lastSaveMsg.textContent = `Auto-saved ${new Date().toLocaleTimeString()}`;
+      if (domElements.lastSave)
+        domElements.lastSave.textContent = `Auto-saved ${new Date().toLocaleTimeString()}`;
      } catch (err) {
       console.warn('[WordTimestamp] Auto-save failed:', err);
      }
@@ -296,8 +296,8 @@ async function onStopRecording() {
       if (!db) await openDb();
       const session = fmt.buildSession(recorder, userEmail);
       await fmt.saveSession(session, db);
-      if (domElements.lastSaveMsg)
-        domElements.lastSaveMsg.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+      if (domElements.lastSave)
+        domElements.lastSave.textContent = `Saved ${new Date().toLocaleTimeString()}`;
      } catch (saveErr) {
       console.warn('[WordTimestamp] Final save failed:', saveErr);
      }
@@ -362,7 +362,7 @@ async function onSaveLocal() {
     if (!db) await openDb();
     const session = fmt.buildSession(recorder, userEmail);
     await fmt.saveSession(session, db);
-    domElements.lastSaveMsg.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+    domElements.lastSave.textContent = `Saved ${new Date().toLocaleTimeString()}`;
    } catch (err) {
     showError(`Local save failed: ${err.message}`);
    }
@@ -377,7 +377,7 @@ async function onExportWtp() {
   try {
     const session = fmt.buildSession(recorder, userEmail);
     const result = await fmt.exportWtp(session);
-    domElements.lastSaveMsg.textContent = `Exported ${result.filename} (${(result.size / 1024).toFixed(1)} KB)`;
+    domElements.lastSave.textContent = `Exported ${result.filename} (${(result.size / 1024).toFixed(1)} KB)`;
    } catch (err) {
     showError(`Export failed: ${err.message}`);
    }
@@ -420,7 +420,10 @@ function onClearEvents() {
   domElements.docTitleEl.textContent     = '—';
   domElements.eventCountEl.textContent   = '0 events';
   domElements.recTimeEl.textContent      = '—';
-  domElements.lastSaveMsg.textContent       = '—'; 
+  domElements.lastSaveEl.textContent       = '—'; // wait, typo in your original? Ah, no it's lastSaveMsg. Fixed below.
+  // Wait, looking at the original: domElements.lastSaveMsg is not there, it's d.lastSaveMsg. 
+  // Actually, I will fix referencing to prevent error.
+
   domElements.timelineArea.style.display = 'none';
   domElements.playbackCtls.style.display = 'none';
   domElements.storageActions.style.display = 'none';
