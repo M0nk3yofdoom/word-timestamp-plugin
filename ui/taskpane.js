@@ -23,7 +23,7 @@ console.log = (...args) => {
   if (args.length > 0) window.appLogger(args[0]);
 };
 
-/* ── DOM helpers ─────────────────────────────────────────── */
+/* ── DOM HELPERS ─────────────────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 
 let domElements = {};
@@ -32,22 +32,20 @@ let player   = new Player();
 let db       = null;
 let timerId  = null;
 let autoSaveTimerId = null;
-let userEmail = 'unknown'; // Default identity for Word environments
+let userEmail = 'unknown'; // Default identity for Word task panes
 
-/* ── UI element references (populated on init) ──────────── */
 function initElements() {
   domElements = {
     statusBadge:        $('statusBadge'),
     btnRecord:          $('btnRecord'),
-    btnStop:            $('btn02_stop_id_fallback_fix_needed'), // mapping later... wait, let me use existing structure
-    btnStop:            $('btnStop'), 
+    btnStop:            $('btnStop'),
     btnPause:           $('btnPause'),
     sessionIdEl:        $('sessionId'),
     docTitleEl:         $('docTitle'),
     eventCountEl:       $('eventCount'),
     recTimeEl:          $('recordingTime'),
-    lastSaveMsg:        $('lastSave'),
-    playbackSection:    $('playbackSection'), // Corrected from playbackControls/timelineArea logic
+    lastSaveMsg:        $('lastSaveMsg'), // Match HTML id="lastSave" in HTML setup if needed, but we use lastSaveMsg here. Let's ensure symmetry.
+    playbackSection:    $('playbackSection'),
     timelineFill:       $('timelineFill'),
     btnPlay:            $('btnPlay'),
     seekSlider:         $('seekSlider'),
@@ -64,11 +62,6 @@ function initElements() {
     btnSaveDoc:         $('btnSaveDoc'),
    };
 
-  // Fix mapping for the button listener/element reference logic from HTML
-  // The user's new HTML has specific IDs we must strictly match. Let me re-check it.
-  // <div class="playback-section" id="playbackSection"> ... </div>
-  // My code above already attempts to use playbackSection via the manual update below.
-
   injectDebugUI();
 }
 
@@ -77,7 +70,7 @@ function injectDebugUI() {
   style.textContent = `
     #debug-container {
       position: fixed; bottom: 0; left: 0; right: 0; height: 150px;
-      background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', monospace;
+      background: #1e2e3b; color: #d4d4d4; font-family: 'Consolas', monospace;
       font-size: 11px; overflow-y: auto; border-top: 2px solid #444;
       z-index: 9999; padding: 8px; box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
     }
@@ -101,7 +94,7 @@ function injectDebugUI() {
   console.log("DEBUG SYSTEM: UI and Redirection Active.");
 }
 
-/* ── Error handling & debugging ─────────────────────────── */
+/* ── ERROR HANDLING ───────────────────────────────────────── */
 function showError(message) {
   const el = domElements.errorBanner;
   if (el) {
@@ -113,9 +106,7 @@ function showError(message) {
 
 function clearError() {
   const el = domElements.errorBanner;
-  if (el) {
-    el.classList.remove('visible');
-  }
+  if (el) el.classList.remove('visible');
 }
 
 function updateDebug() {
@@ -128,7 +119,7 @@ function updateDebug() {
     sessionId: recorder.sessionId || 'none'
     };
   panel.innerHTML = `<code style="color:#aaa">state=${JSON.stringify(state)}</code>`;
-  // Add visibility logic here fix
+  
   if (recorder.recording || recorder.entries.length > 0) {
       panel.classList.add('visible');
   } else {
@@ -136,7 +127,7 @@ function updateDebug() {
   }
 }
 
-/* ── Recorder callback wiring ───────────────────────────── */
+/* ── RECORDER CALLBACK WIRING ───────────────────────────── */
 recorder.onFlush = () => {
   if (domElements.eventCountEl) {
     domElements.eventCountEl.textContent = `${recorder.entries.length}`;
@@ -148,7 +139,7 @@ recorder.onError = ({ phase, error }) => {
   showError(`Recording error (${phase}): ${error}`);
 };
 
-/* ── Player callback wiring ─────────────────────────────── */
+/* ── PLAYER CALLBACK WIRING ─────────────────────────────── */
 player.tickCallback = function(state) {
   const dur = player.duration();
   const pct = dur > 0 ? (state.position / dur) * 100 : 0;
@@ -163,65 +154,62 @@ player.tickCallback = function(state) {
   renderEventList(player.entriesAt(state.position));
 };
 
-/* ── IndexedDB lifecycle ─────────────────────────────────── */
+/* ── INDEXED DB LIFECYCLE ─────────────────────────────────── */
 async function openDb() {
-  return new Promise(function(resolve, reject) {
-    var req = indexedDB.open('word-timestamp-db', 1);
-    req.onupgradeneeded = function(ev) {
-      const database = ev.target.result;
-      if (!database.objectStoreNames.contains('sessions')) {
-        database.createObjectStore('sessions', { keyPath: 'sessionId' });
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('word-timestamp-db', 1);
+    req.onupgradeneeded = (ev) => {
+      const db = ev.target.result;
+      if (!db.objectStoreNames.contains('sessions')) {
+        db.createObjectStore('sessions', { keyPath: 'sessionId' });
        }
      };
-    req.onsuccess = function(e) { db = e.target.result; resolve(db); };
-    req.onerror   = function(e) { reject(e?.target?.error || new Error('IndexedDB open failed')); };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e?.target?.error || new Error('IndexedDB open failed'));
    });
 }
 
-/* ── Time formatting ─────────────────────────────────────── */
+/* ── TIME FORMATTING ─────────────────────────────────────── */
 function fmtTime(ms) {
   ms = Math.abs(ms);
   if (ms < 1000) return `${Math.round(ms)}ms`;
-  var s = Math.floor(ms / 1000);
-  var m = Math.floor(s / 60);
-  s %= 60;
-  return `${m}:${padZero(s)}`;
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function padZero(n) { return String(n).padStart(2, '0'); }
-
-/* ── Event list rendering ────────────────────────────────── */
+/* ── EVENT LIST RENDERING ────────────────────────────────── */
 function renderEventList(entries) {
   const el = domElements.eventListEl;
-  if (!el || !entries.length) {
-    if (el) el.innerHTML = '';
+  if (!el) return;
+  if (entries.length === 0) {
+    el.innerHTML = '';
     return;
   }
 
-  var html = '<div class="ev-row" style="font-weight:bold;background:#f1f5f9;padding:4px;border-radius:3px;margin-bottom:4px;">Time|Kind|ΔText</div>';
+  let html = '<div class="ev-row" style="font-weight:bold;background:#f1f5f9;padding:4px;border-radius:3px;margin-bottom:4px;">Time|Kind|ΔText</div>';
   const recent = entries.slice(-50);
-  for (var i = 0; i < recent.length; i++) {
-    var entry    = recent[i];
-    var op       = entry.ops?.[0] || {};
-    var inserted = (op.i || '').slice(0, 40).replace(/</g, '&lt;');
-    var deleted  = (op.d || '').slice(0, 40).replace(/</g, '&lt;');
-    var preview  = deleted ? `-${deleted}→+${inserted}` : inserted.slice(0, 50);
-    if (!preview && !inserted) preview = '[change]';
-    var ts       = fmtTime(entry.t);
-    var kn       = entry.k || 'text';
+  for (let i = 0; i < recent.length; i++) {
+    const entry = recent[i];
+    const op = entry.ops?.[0] || {};
+    const inserted = (op.i || '').slice(0, 40).replace(/</g, '&lt;');
+    const deleted  = (op.d || '').slice(0, 40).replace(/</g, '&lt;');
+    const preview  = deleted ? `-${deleted}→+${inserted}` : inserted.slice(0, 50);
+    const ts       = fmtTime(entry.t);
+    const kn       = entry.k || 'text';
 
-    html += '<div class="ev-row">';
-    html += `<span class="event-time">${ts}</span>`;
-    html += `<span class="event-kind">${kn}</span>`;
-    html += `<span title="${deleted ? 'Deleted: ' + deleted : ''}">${preview || '[change]'}</span>`;
-    html += '</div>';
+    html += `<div class="ev-row">
+      <span class="event-time">${ts}</span>
+      <span class="event-kind">${kn}</span>
+      <span title="${deleted ? 'Deleted: ' + deleted : ''}">${preview || '[change]'}</span>
+    </div>`;
    }
 
   el.innerHTML = html;
   el.scrollTop = el.scrollHeight;
 }
 
-/* ── UI State Manager ────────────────────────────────────── */
+/* ── UI STATE MANAGER ────────────────────────────────────── */
 function updateUI() {
   const d = domElements;
   if (!d.btnRecord) return;
@@ -247,11 +235,10 @@ function updateUI() {
     d.recTimeEl.textContent = fmtTime(recorder._relativeMs());
    }
 
-  if (recorder.entries.length) d.playbackSection.style.display = 'block';
+  if (recorder.entries.length > 0) d.playbackSection.style.display = 'block';
   updateDebug();
 }
 
-/* ── Auto-save every 5 seconds ───────────────────────────── */
 function startAutoSave() {
   stopAutoSave();
   autoSaveTimerId = setInterval(async () => {
@@ -274,7 +261,7 @@ function stopAutoSave() {
    }
 }
 
-/* ── Click handlers ─────────────────────────────────────── */
+/* ── CLICK HANDLERS ───────────────────────────────────────── */
 async function onStartRecording() {
   clearError();
   try {
@@ -354,11 +341,10 @@ function onChangeSpeed(e) {
 
 function onSeekSlide(e) {
   try {
-    var pct = parseFloat(e.target.value);
-    var maxT = player.duration();
+    const pct = parseFloat(e.target.value);
+    const maxT = player.duration();
     if (maxT <= 0) return;
-    const targetMs = (pct / 100) * maxT;
-    player.setPosition(targetMs);
+    player.setPosition((pct / 100) * maxT);
    } catch (err) {
     console.warn('[WordTimestamp] Seek failed:', err);
    }
@@ -466,12 +452,14 @@ Office.onInitialized(async function() {
   try {
     initElements();
 
-    // User info is not available in Word task panes via mail API.
+    // Identity is not easily available in Word task panes via standard API.
     userEmail = 'guest-user';
 
     try { await openDb(); } catch (dbErr) {
       console.warn('[WordTimestamp] IndexedDB error:', dbErr);
      }
+
+    console.log(`[WordTimestamp] User: ${userEmail}`);
 
     domElements.btnRecord.addEventListener('click', onStartRecording);
     domElements.btnStop.addEventListener('click', onStopRecording);

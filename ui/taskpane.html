@@ -7,10 +7,10 @@
 </head>
 <body class="container">
 
-     <!-- Error banner (hidden by default) -->
+     <!-- Error banner -->
      <div id="errorBanner" class="error-banner"></div>
 
-     <!-- Debug panel (toggle with ctrl+shift+D) -->
+     <!-- Debug panel -->
      <div id="debugPanel" class="debug-panel"></div>
 
      <!-- Header -->
@@ -20,32 +20,35 @@
         <span id="statusBadge" class="badge">Ready</span>
      </header>
 
-     <!-- Recording controls -->
+     <!-- Controls -->
      <div class="controls">
         <button id="btnRecord" class="btn btn-primary">
            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-           Record</button>
+           Record
+        </button>
         <button id="btnStop" class="btn btn-secondary" disabled>
            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-           Stop</button>
+           Stop
+        </button>
         <button id="btnPause" class="btn btn-success" disabled>
            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
-           Pause</button>
+           Pause
+        </button>
      </div>
 
-     <!-- Recording info -->
+     <!-- Info -->
      <div class="info">
         <div class="info-row"><span class="info-label">Session</span><span id="sessionId" class="info-value">—</span></div>
         <div class="info-row"><span class="info-label">Document</span><span id="docTitle" class="info-value">—</span></div>
         <div class="info-row"><span class="info-label">Events</span><span id="eventCount" class="info-value">0</span></div>
         <div class="info-row"><span class="info-label">Duration</span><span id="recordingTime" class="info-value">—</span></div>
-        <div class="info-row"><span class="info-label">Last Save</span><span id="lastSave" class="info-value">—</span></div>
+        <div class="info-row"><span class="info-label">Last Save</span><span id="lastSaveMsg" class="info-value">—</span></div>
      </div>
 
-     <!-- Playback controls (shown after recording stopped) -->
-     <div class="playback-section" id="playbackSection" style="display:none">
-        <div class="timeline-area">
-           <div class="timeline-bar" id="timelineBar">
+     <!-- Playback (Visible when recording stops) -->
+     <div id="playbackSection" class="playback-section" style="display:none">
+        <div id="timelineArea" class="timeline-area">
+           <div class="timeline-bar">
               <div id="timelineFill" class="timeline-fill"></div>
            </div>
         </div>
@@ -53,7 +56,8 @@
         <div class="playback-controls">
            <button id="btnPlay" class="btn btn-sm btn-success">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
-              Play</button>
+              Play
+           </button>
            <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" value="0">
            <span id="seekLabel" class="info-value seek-label">0s</span>
            <select id="speedSelect" class="speed-select">
@@ -66,31 +70,29 @@
            </select>
         </div>
 
-        <!-- Storage actions -->
-        <div class="controls row" id="storageActions">
+        <!-- Action row -->
+        <div class="controls row">
            <button id="btnSaveLocal" class="btn btn-sm btn-secondary">Save Local</button>
            <button id="btnExportWtp" class="btn btn-sm btn-primary">Export .wtp</button>
         </div>
      </div>
 
-     <!-- File actions -->
+     <!-- Global Actions -->
      <div class="controls row">
         <label id="btnImportWtp" class="btn btn-sm btn-secondary file-label">
-           Import .wtp<input id="fileInput" type="file" accept=".wtp" style="display:none">
+           Import .wtp <input id="fileInput" type="file" accept=".wtp" style="display:none">
         </label>
         <button id="btnClearEvents" class="btn btn-sm btn-danger">Clear</button>
      </div>
 
-     <!-- Save document helper -->
      <div class="controls row">
         <button id="btnSaveDoc" class="btn btn-sm btn-secondary full">Save Document</button>
      </div>
 
-     <!-- Event list (scrollable) -->
+     <!-- Log -->
      <div class="section-label">Event Log</div>
-     <div class="event-list" id="eventList"></div>
+     <div id="eventList" class="event-list"></div>
 
-     <!-- Office.js library -->
      <script src="https://appsforoffice.microsoft.com/assets/webpack/1.10.2/Office.bundle.min.js"></script>
      <script type="module" src="./taskpane.js"></script>
 </body>

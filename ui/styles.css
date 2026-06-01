@@ -205,6 +205,7 @@ h1 {
   display: flex;
   gap: 10px;
   align-items: center;
+  margin-bottom: 16px;
 }
 
 .seek-slider {
@@ -256,7 +257,9 @@ h1 {
   border-bottom: 1px solid #f1f5f9;
 }
 
-.ev-row:last-child { border-bottom: none; }
+.ev-row:last-child {
+  border-bottom: none;
+}
 
 .event-time {
   color: #2563eb;
