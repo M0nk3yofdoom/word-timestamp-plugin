@@ -30,7 +30,7 @@ class Recorder {
     this._pausedAt = null;
 
     try {
-      // STEP 1: Get document title in a single sync-profile run
+      // STEP 1: Fetch doc title in an async context
       await Word.run(async (ctx) => {
         const doc = ctx.document;
         doc.load('name');
@@ -38,7 +38,7 @@ class Recorder {
         this.docTitle = doc.name || 'Untitled';
       });
 
-      // STEP 2: Define the event handler synchronously
+      // STEP 2: Create the handler function (it's a closure)
       const self = this;
       this._handlerRef = (event) => {
         if (!self.recording || self.paused) {
@@ -47,7 +47,6 @@ class Recorder {
         }
 
         try {
-          // Process multiple changes in a batch
           const changes = event?.changes || [];
           for (let i = 0; i < changes.length; i++) {
             const change = changes[i];
@@ -55,7 +54,7 @@ class Recorder {
             if (entry) self.entries.push(entry);
           }
 
-          // Defer UI updates to avoid blocking the event processing loop
+          // Defer UI updates to avoid blocking the event loop
           queueMicrotask(() => {
             if (self.onFlush && typeof self.onFlush === 'function') {
               try { self.onFlush(); } catch (_) {}
@@ -63,23 +62,24 @@ class Recorder {
           });
 
         } catch (err) {
-          console.error('[WordTimestamp] Error processing change event:', err);
+          console.error('[WordTimestamp] Event processing error:', err);
           if (self.onError) {
             try { self.onError({ phase: 'recording', error: err.message }); } catch (_) {}
           }
         } finally {
-          // Signal completion to the Office JS engine
+          // IMPORTANT: Signal completion to the Office host engine
           try { event.completed(); } catch (_) {}
         }
       };
 
-      // STEP 3: Register handler in a sync-profile Word.run call
+      // STEP 3: Register handler in a synchronous context boundary.
+      // We must return from Word.run before we enter any further await points for this to be stable.
       await Word.run((ctx) => {
         ctx.document.onChanged.add(this._handlerRef);
         return ctx.sync();
       });
 
-      console.log(`[WordTimestamp] Recording started. Session: ${this.sessionId}`);
+      console.log(`[WordTimestamp] Recording started: ${this.sessionId}`);
       return true;
     } catch (err) {
       console.error('[WordTimestamp] Failed to start recording:', err);
@@ -107,14 +107,14 @@ class Recorder {
     if (!this.recording) return false;
     const self = this;
 
-    // Remove handler synchronously via a fresh context to ensure stability
+    // Remove handler using a synchronous run to ensure the proxy is detached correctly
     Word.run((ctx) => {
       if (self._handlerRef) {
         ctx.document.onChanged.remove(self._handlerRef);
         self._handlerRef = null;
       }
       return ctx.sync();
-    }).catch(err => console.warn('[WordTimestamp] Cleanup error:', err));
+    }).catch(err => console.warn('[WordTimestamp] Stop cleanup warning:', err));
 
     this.recording = false;
     this.paused = false;
@@ -145,17 +145,16 @@ class Recorder {
   }
 
   clear() {
-    // Ensure listener is detached first if it was active
     if (this.recording && this._handlerRef) {
-      // This is slightly simplified for clear(); we'll rely on stop doing the heavy lifting
-      // But let's ensure there's no dangling reference
-      this._handlerRef = null;
+      Word.run((ctx) => {
+        ctx.document.onChanged.remove(this._handlerRef);
+        this._handlerRef = null;
+        return ctx.sync();
+      }).catch(() => {}); 
     }
-
     this.entries = [];
     this.sessionId = '';
     this.docTitle = null;
-    this.userName = null;
     this.recording = false;
     this.paused = false;
     this.startTime = null;
@@ -173,16 +172,6 @@ class Recorder {
       durationMs: this._relativeMs(),
       entries: [...this.entries]
     };
-  }
-
-  processEntry(entry) {
-    if (!entry) return;
-    this.entries.push(entry);
-    queueMicrotask(() => {
-      if (this.onFlush && typeof this.onFlush === 'function') {
-        try { this.onFlush(); } catch (_) {}
-      }
-    });
   }
 }
 
