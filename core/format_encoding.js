@@ -17,9 +17,12 @@ export function buildSession(recorder) {
     recordedAt: snapshot.recordedAt,
     sessionId: snapshot.sessionId,
     docTitle: snapshot.docTitle,
+    startTime: snapshot.sessionStartTime,
+    authorId: recorder.authorId,
+    authorName: recorder.authorName,
     integrityHash: '', // populated after hashing
     entries: snapshot.entries
-     };
+  };
 }
 
 /** Save session to IndexedDB */

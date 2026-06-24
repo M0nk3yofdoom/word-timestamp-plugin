@@ -1,4 +1,4 @@
-/** src/core/player.js — Timeline playback engine */
+/** src/core/player.js — Timeline playback engine with enhanced navigation */
 
 class Player {
   constructor() {
@@ -9,16 +9,31 @@ class Player {
     this._rafId = null;
     this._lastFrameTime = null;
     this.tickCallback = null;
-    }
+    this.timelineZoom = 1;
+    this.authorTracks = {};
+    this.currentAuthor = null;
+  }
 
-  load(entries) {
+  load(entries, metadata = {}) {
     this.entries = [...entries];
+    this.timelineMetadata = metadata;
     this.pause();
     this.positionMs = 0;
+    this.authorTracks = {};
+
+    // Group entries by author for tracking
+    this.entries.forEach(entry => {
+      const author = entry.authorName || 'unknown';
+      if (!this.authorTracks[author]) {
+        this.authorTracks[author] = [];
+      }
+      this.authorTracks[author].push(entry);
+    });
+
     if (this.tickCallback) {
       try { this.tickCallback({ position: 0, playing: false }); } catch (_) {}
-      }
-     }
+    }
+  }
 
   play() {
     if (this.isPlaying) return;
@@ -27,57 +42,99 @@ class Player {
     this.isPlaying = true;
     this._lastFrameTime = performance.now();
     this._loop();
-     }
+  }
 
   pause() {
     this.isPlaying = false;
     if (this._rafId !== null) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-     }
+  }
 
   setSpeed(speed) { this.speed = Math.max(0.25, Math.min(32, speed)); }
 
   setPosition(ms) {
     this.positionMs = Math.max(0, ms);
     if (this.tickCallback) { try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {} }
-     }
+  }
+
+  setZoom(zoom) {
+    this.timelineZoom = Math.max(0.1, Math.min(10, zoom));
+  }
 
   duration() {
     if (!this.entries.length) return 0;
     const last = this.entries[this.entries.length - 1];
-   return Math.round(last.t + 50);
-     }
-
-  entriesAt(pos) { return this.entries.filter(e => e.t <= pos).sort((a, b) => a.t - b.t); }
-
-  /** Get all timestamps for navigation */
-  getAllTimestamps() {
-    return this.entries.map(e => ({ t: e.t, idx: this.entries.indexOf(e) }));
+    return Math.round(last.t + 50);
   }
 
-  /** Navigate to previous change (-100ms or exact prev timestamp) */
+  entriesAt(pos) {
+    return this.entries.filter(e => e.t <= pos).sort((a, b) => a.t - b.t);
+  }
+
+  getAllTimestamps() {
+    return this.entries.map((e, idx) => ({ t: e.t, idx }));
+  }
+
   prevChange(stepMs = 100) {
-    this.positionMs = Math.max(0, this.positionMs - stepMs);
-    if (this.tickCallback) { try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {} }
+    const prevEntry = this.getPreviousEntry();
+    if (prevEntry) {
+      this.positionMs = prevEntry.t;
+      if (this.tickCallback) {
+        try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {}
+      }
     }
+  }
 
-  /** Navigate to next change (+100ms or exact next timestamp) */
   nextChange(stepMs = 100) {
-    const maxT = this.duration();
-    this.positionMs = Math.min(maxT, this.positionMs + stepMs);
-    if (this.tickCallback) { try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {} }
+    const nextEntry = this.getNextEntry();
+    if (nextEntry) {
+      this.positionMs = nextEntry.t;
+      if (this.tickCallback) {
+        try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {}
+      }
     }
+  }
 
-  /** Jump to a specific entry index */
+  getPreviousEntry() {
+    for (let i = this.entries.length - 1; i >= 0; i--) {
+      if (this.entries[i].t < this.positionMs) {
+        return this.entries[i];
+      }
+    }
+    return null;
+  }
+
+  getNextEntry() {
+    for (let i = 0; i < this.entries.length; i++) {
+      if (this.entries[i].t > this.positionMs) {
+        return this.entries[i];
+      }
+    }
+    return null;
+  }
+
   goToEntry(index) {
     if (index < 0 || index >= this.entries.length) return;
-    this.positionMs = this.entries[index].t + 1; // +1 so the event is included in entriesAt()
-    if (this.tickCallback) { try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {} }
+    this.positionMs = this.entries[index].t + 1;
+    if (this.tickCallback) {
+      try { this.tickCallback({ position: this.positionMs, playing: this.isPlaying }); } catch (_) {}
     }
+  }
 
-  clear() { this.pause(); this.entries = []; this.positionMs = 0; }
+  getEntriesByAuthor(authorName) {
+    return this.authorTracks[authorName] || [];
+  }
 
-   _loop() {
+  clear() {
+    this.pause();
+    this.entries = [];
+    this.positionMs = 0;
+    this.authorTracks = {};
+    this.timelineZoom = 1;
+  }
+
+  _loop() {
     if (!this.isPlaying) return;
+
     this._rafId = requestAnimationFrame(() => {
       const now = performance.now();
       const dt = now - (this._lastFrameTime || now);
@@ -86,14 +143,17 @@ class Player {
 
       if (this.tickCallback) {
         try { this.tickCallback({ position: this.positionMs, playing: true }); } catch (_) {}
-        }
+      }
 
-     const maxT = this.duration();
-      if (maxT > 0 && this.positionMs >= maxT) { this.pause(); return; }
+      const maxT = this.duration();
+      if (maxT > 0 && this.positionMs >= maxT) {
+        this.pause();
+        return;
+      }
 
-     this._loop();
-      });
-     }
+      this._loop();
+    });
+  }
 }
 
 export { Player };
