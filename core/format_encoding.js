@@ -105,9 +105,12 @@ export async function importWtp(file) {
       recordedAt: parsed.recordedAt,
       sessionId: parsed.sessionId,
       docTitle: parsed.docTitle,
+      startTime: parsed.startTime,
+      authorId: parsed.authorId,
+      authorName: parsed.authorName,
       integrityHash: '', // strip for comparison
       entries: parsed.entries
-      }, null, 2);
+    }, null, 2);
     const computed = `sha256-${await sha256hex(tempJson)}`;
 
     if (computed !== parsed.integrityHash) {
