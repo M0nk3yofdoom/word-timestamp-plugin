@@ -4,7 +4,7 @@ import Recorder   from '../core/recorder.js';
 import Player     from '../core/player.js';
 import * as fmt    from '../core/format_encoding.js';
 
-/* ── INTEGRATED DEBUGGER SETUP ──────────────────────────── */
+// ── DEBUGGER SETUP (Fixed Visibility & Reliability) ─────────────────────────
 const _originalLog = console.log;
 window.appLogger = (msg) => {
   const logEl = document.getElementById('app-debug-log');
@@ -23,7 +23,7 @@ console.log = (...args) => {
   if (args.length > 0) window.appLogger(args[0]);
 };
 
-/* ── DOM HELPERS ─────────────────────────────────────────── */
+// ── DOM HELPERS ───────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
 let domElements = {};
@@ -32,7 +32,7 @@ let player   = new Player();
 let db       = null;
 let timerId  = null;
 let autoSaveTimerId = null;
-let userEmail = 'unknown'; // Default identity for Word task panes
+let userEmail = 'unknown'; // Default identity for Word environments
 
 function initElements() {
   domElements = {
@@ -44,10 +44,18 @@ function initElements() {
     docTitleEl:         $('docTitle'),
     eventCountEl:       $('eventCount'),
     recTimeEl:          $('recordingTime'),
-    lastSaveMsg:        $('lastSaveMsg'), // Match HTML id="lastSave" in HTML setup if needed, but we use lastSaveMsg here. Let's ensure symmetry.
+    lastSaveMsg:        $('lastSaveMsg'),
     playbackSection:    $('playbackSection'),
     timelineFill:       $('timelineFill'),
+    timelineEvents:     $('timelineEvents'),
+    timelineIndicator:  $('timelineIndicator'),
+    zoomSlider:         $('zoomSlider'),
+    zoomLabel:          $('zoomLabel'),
+    btnZoomIn:          $('btnZoomIn'),
+    btnZoomOut:         $('btnZoomOut'),
     btnPlay:            $('btnPlay'),
+    btnPlayPrev:        $('btnPlayPrev'),
+    btnPlayNext:        $('btnPlayNext'),
     seekSlider:         $('seekSlider'),
     seekLabel:          $('seekLabel'),
     speedSelect:        $('speedSelect'),
@@ -60,9 +68,10 @@ function initElements() {
     debugPanel:         $('debugPanel'),
     btnClearEvents:     $('btnClearEvents'),
     btnSaveDoc:         $('btnSaveDoc'),
-   };
-
-  injectDebugUI();
+    btnToggleDebug:     $('btnToggleDebug'),
+    debugFilter:        $('debugFilter'),
+    btnClearDebug:      $('btnClearDebug')
+  };
 }
 
 function injectDebugUI() {
@@ -94,7 +103,7 @@ function injectDebugUI() {
   console.log("DEBUG SYSTEM: UI and Redirection Active.");
 }
 
-/* ── ERROR HANDLING ───────────────────────────────────────── */
+// ── ERROR HANDLING ─────────────────────────────────────────
 function showError(message) {
   const el = domElements.errorBanner;
   if (el) {
@@ -127,7 +136,7 @@ function updateDebug() {
   }
 }
 
-/* ── RECORDER CALLBACK WIRING ───────────────────────────── */
+// ── RECORDER CALLBACK WIRING ─────────────────────────────
 recorder.onFlush = () => {
   if (domElements.eventCountEl) {
     domElements.eventCountEl.textContent = `${recorder.entries.length}`;
@@ -139,7 +148,7 @@ recorder.onError = ({ phase, error }) => {
   showError(`Recording error (${phase}): ${error}`);
 };
 
-/* ── PLAYER CALLBACK WIRING ─────────────────────────────── */
+// ── PLAYER CALLBACK WIRING ───────────────────────────────
 player.tickCallback = function(state) {
   const dur = player.duration();
   const pct = dur > 0 ? (state.position / dur) * 100 : 0;
@@ -151,10 +160,62 @@ player.tickCallback = function(state) {
   if (domElements.seekLabel)
     domElements.seekLabel.textContent = fmtTime(Math.abs(state.position));
 
+  renderTimeline(player.entries, state.position);
   renderEventList(player.entriesAt(state.position));
 };
 
-/* ── INDEXED DB LIFECYCLE ─────────────────────────────────── */
+// ── TIMELINE RENDERING ────────────────────────────────────
+function renderTimeline(entries, currentPosition) {
+  const container = domElements.timelineEvents;
+  if (!container) return;
+
+  const duration = player.duration();
+  if (duration <= 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Clear existing events
+  container.innerHTML = '';
+
+  // Create event markers proportional to timeline
+  entries.forEach(entry => {
+    const pct = (entry.t / duration) * 100;
+    const marker = document.createElement('div');
+    marker.className = 'timeline-event';
+    marker.style.left = `${Math.min(pct, 100)}%`;
+    marker.title = `${fmtTime(entry.t)} - ${entry.k || 'change'}`;
+    container.appendChild(marker);
+  });
+
+  // Update indicator position
+  if (domElements.timelineIndicator) {
+    const indicatorPct = (currentPosition / duration) * 100;
+    domElements.timelineIndicator.style.left = `${Math.min(indicatorPct, 100)}%`;
+  }
+}
+
+// ── ZOOM CONTROLS ─────────────────────────────────────────
+function onZoomIn() {
+  player.setZoom(player.timelineZoom + 0.5);
+  if (domElements.zoomLabel)
+    domElements.zoomLabel.textContent = `${player.timelineZoom.toFixed(1)}×`;
+}
+
+function onZoomOut() {
+  player.setZoom(player.timelineZoom - 0.5);
+  if (domElements.zoomLabel)
+    domElements.zoomLabel.textContent = `${player.timelineZoom.toFixed(1)}×`;
+}
+
+function onZoomSlider(e) {
+  const zoom = parseFloat(e.target.value);
+  player.setZoom(zoom);
+  if (domElements.zoomLabel)
+    domElements.zoomLabel.textContent = `${zoom.toFixed(1)}×`;
+}
+
+// ── INDEXED DB LIFECYCLE ───────────────────────────────────
 async function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('word-timestamp-db', 1);
@@ -169,7 +230,7 @@ async function openDb() {
    });
 }
 
-/* ── TIME FORMATTING ─────────────────────────────────────── */
+// ── TIME FORMATTING ───────────────────────────────────────
 function fmtTime(ms) {
   ms = Math.abs(ms);
   if (ms < 1000) return `${Math.round(ms)}ms`;
@@ -178,7 +239,7 @@ function fmtTime(ms) {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/* ── EVENT LIST RENDERING ────────────────────────────────── */
+// ── EVENT LIST RENDERING ──────────────────────────────────
 function renderEventList(entries) {
   const el = domElements.eventListEl;
   if (!el) return;
@@ -209,7 +270,7 @@ function renderEventList(entries) {
   el.scrollTop = el.scrollHeight;
 }
 
-/* ── UI STATE MANAGER ────────────────────────────────────── */
+// ── UI STATE MANAGER ──────────────────────────────────────
 function updateUI() {
   const d = domElements;
   if (!d.btnRecord) return;
@@ -261,7 +322,7 @@ function stopAutoSave() {
    }
 }
 
-/* ── CLICK HANDLERS ───────────────────────────────────────── */
+// ── CLICK HANDLERS ─────────────────────────────────────────
 async function onStartRecording() {
   clearError();
   try {
@@ -452,7 +513,7 @@ Office.onInitialized(async function() {
   try {
     initElements();
 
-    // Identity is not easily available in Word task panes via standard API.
+    // Identity is not easily available in Word task panes. Fallback to guest profile.
     userEmail = 'guest-user';
 
     try { await openDb(); } catch (dbErr) {
@@ -464,8 +525,13 @@ Office.onInitialized(async function() {
     domElements.btnRecord.addEventListener('click', onStartRecording);
     domElements.btnStop.addEventListener('click', onStopRecording);
     domElements.btnPause.addEventListener('click', onPauseResume);
+    domElements.btnPlayNext.addEventListener('click', () => player.nextChange());
+    domElements.btnPlayPrev.addEventListener('click', () => player.prevChange());
     domElements.btnPlay.addEventListener('click', onTogglePlayback);
     domElements.seekSlider.addEventListener('input', onSeekSlide);
+    domElements.btnZoomIn.addEventListener('click', onZoomIn);
+    domElements.btnZoomOut.addEventListener('click', onZoomOut);
+    domElements.zoomSlider.addEventListener('input', onZoomSlider);
     domElements.speedSelect.addEventListener('change', onChangeSpeed);
     domElements.btnSaveLocal.addEventListener('click', onSaveLocal);
     domElements.btnExportWtp.addEventListener('click', onExportWtp);
