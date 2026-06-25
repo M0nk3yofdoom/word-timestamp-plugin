@@ -31,6 +31,9 @@ class Recorder {
     this._pauseElapsed = 0;
     this._pausedAt = null;
 
+    // Signal that recording state has changed
+    if (this.onFlush) this.onFlush();
+
     try {
       // PHASE 1: Get the document meta-data and user info (async is fine here)
       await Word.run(async (ctx) => {
@@ -78,9 +81,9 @@ class Recorder {
 
       // PHASE 3: Register within a dedicated Synchronous Runtime call
       // This is the core fix for the "no events found" issue.
-      await Word.run((ctx) => {
+      await Word.run(async (ctx) => {
         ctx.document.onChanged.add(this._handlerRef);
-        return ctx.sync();
+        await ctx.sync();
       });
 
       console.log(`[WordTimestamp] Session Started: ${this.sessionId} by ${this.authorName}`);
