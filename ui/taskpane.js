@@ -65,7 +65,7 @@ function initElements() {
     fileInput:          $('fileInput'),
     eventListEl:        $('eventList'),
     errorBanner:        $('errorBanner'),
-    debugPanel:         $('debugPanel'),
+    debugPanel:         $('debug-container'),
     btnClearEvents:     $('btnClearEvents'),
     btnSaveDoc:         $('btnSaveDoc'),
     btnToggleDebug:     $('btnToggleDebug'),
@@ -126,14 +126,18 @@ function updateDebug() {
     paused: recorder.paused,
     entries: recorder.entries.length,
     sessionId: recorder.sessionId || 'none'
-    };
-  panel.innerHTML = `<code style="color:#aaa">state=${JSON.stringify(state)}</code>`;
+  };
+  
+  // We don't overwrite the whole panel because it contains the log
+  // Instead, we can use the debug panel to show state in the header if needed, 
+  // but for now, let's just ensure it's visible when recording.
   
   if (recorder.recording || recorder.entries.length > 0) {
-      panel.classList.add('visible');
+      panel.classList.remove('hidden');
   } else {
-      panel.classList.remove('visible');
+      // We leave it as is if the user manually toggled it on
   }
+}
 }
 
 // ── RECORDER CALLBACK WIRING ─────────────────────────────
@@ -141,7 +145,7 @@ recorder.onFlush = () => {
   if (domElements.eventCountEl) {
     domElements.eventCountEl.textContent = `${recorder.entries.length}`;
   }
-  updateDebug();
+  updateUI();
 };
 
 recorder.onError = ({ phase, error }) => {
@@ -537,13 +541,36 @@ Office.onInitialized(async function() {
     domElements.btnExportWtp.addEventListener('click', onExportWtp);
     domElements.fileInput.addEventListener('change', onImportFile);
     domElements.btnClearEvents.addEventListener('click', onClearEvents);
-    if (domElements.btnSaveDoc) {
-      domElements.btnSaveDoc.addEventListener('click', onSaveDoc);
-     }
+    if (domElements.btnToggleDebug) {
+      domElements.btnToggleDebug.addEventListener('change', (e) => {
+        const panel = domElements.debugPanel;
+        if (panel) {
+          if (e.target.checked) panel.classList.remove('hidden');
+          else panel.classList.add('hidden');
+        }
+      });
+    }
 
-    setTimeout(() => {
-      updateDebug();
-    }, 1000);
+    if (domElements.btnClearDebug) {
+      domElements.btnClearDebug.addEventListener('click', () => {
+        const logEl = $('app-debug-log');
+        if (logEl) logEl.innerHTML = '';
+      });
+    }
+
+    if (domElements.debugFilter) {
+      domElements.debugFilter.addEventListener('change', (e) => {
+        const logEl = $('app-debug-log');
+        if (!logEl) return;
+        const filter = e.target.value.toLowerCase();
+        const lines = logEl.querySelectorAll('.debug-line');
+        lines.forEach(line => {
+          const text = line.textContent.toLowerCase();
+          const matches = filter === 'all' || text.includes(filter);
+          line.style.display = matches ? '' : 'none';
+        });
+      });
+    }
    } catch (err) {
     console.error('[WordTimestamp] Initialization error:', err);
    }
