@@ -138,7 +138,6 @@ function updateDebug() {
       // We leave it as is if the user manually toggled it on
   }
 }
-}
 
 // ── RECORDER CALLBACK WIRING ─────────────────────────────
 recorder.onFlush = () => {
