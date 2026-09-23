@@ -1,0 +1,371 @@
+/** src/ui/styles.css — WordTimestamp task pane styling */
+
+/* Reset & base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #1a1a2e;
+  background: #f8f9fa;
+  padding: 16px;
+  min-width: 300px;
+}
+
+/* Error banner */
+.error-banner {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  display: none;
+}
+
+.error-banner.visible {
+  display: block;
+}
+
+/* Debug Console */
+#debug-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: #1e2e3b;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  overflow-y: auto;
+  border-top: 2px solid #444;
+  z-index: 9999;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+#debug-container.hidden {
+  display: none;
+}
+
+.debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+  user-select: none;
+}
+
+.debug-header-title {
+  font-weight: bold;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+#app-debug-log {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.debug-line {
+  border-bottom: 1px solid #334155;
+  padding: 2px 0;
+  line-height: 1.4;
+}
+
+.debug-line:nth-child(even) {
+  background: rgba(255,255,255,0.02);
+}
+
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+/* Status badge */
+.badge {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.badge.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.badge.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.controls.row {
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s ease, opacity 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+
+.btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+.btn-secondary:hover:not(:disabled) { background: #e2e8f0; }
+
+.btn-success { background: #16a34a; color: white; }
+.btn-success:hover:not(:disabled) { background: #15803d; }
+
+.btn-danger { background: #ef4444; color: white; }
+.btn-danger:hover:not(:disabled) { background: #dc2626; }
+
+.full { flex: 1; width: 100%; }
+
+/* Info panel */
+.info {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.info-label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.info-value {
+  font-weight: 500;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+/* Updated Timeline event markers */
+.timeline-event {
+  position: absolute;
+  width: 6px;
+  height: 100%;
+  background: #2563eb;
+  border-radius: 1px;
+  top: 0;
+  cursor: pointer;
+}
+
+.timeline-event:hover {
+  background: #1d4ed8;
+  transform: scaleX(2);
+}
+
+/* Timeline indicator */
+.timeline-indicator {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: #fbbf24;
+  border-radius: 1px;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+  transition: left 0.1s linear;
+}
+
+/* Zoom controls */
+.timeline-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-timeline {
+  width: 28px;
+  height: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f8fafc;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-timeline:hover {
+  background: #f1f5f9;
+}
+
+.zoom-slider {
+  flex: 1;
+  height: 4px;
+}
+
+.zoom-label {
+  font-family: 'SF Mono', monospace;
+  font-size: 11px;
+  color: #64748b;
+  min-width: 30px;
+  text-align: center;
+}
+
+.timeline-area {
+  margin-bottom: 16px;
+}
+
+.timeline-bar {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.timeline-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2563eb, #16a34a);
+  transition: width 0.1s linear;
+}
+
+/* Playback controls */
+.playback-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.seek-slider {
+  flex: 1;
+  height: 4px;
+  margin: 0 8px;
+}
+
+.seek-label {
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  min-width: 45px;
+  text-align: right;
+}
+
+.speed-select {
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  outline: none;
+}
+
+/* Event list */
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.event-list {
+  max-height: 240px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.ev-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ev-row:last-child {
+  border-bottom: none;
+}
+
+.event-time {
+  color: #2563eb;
+  font-family: 'SF Mono', monospace;
+  min-width: 55px;
+}
+
+.event-kind {
+  color: #16a34a;
+  font-weight: 600;
+  min-width: 40px;
+}
