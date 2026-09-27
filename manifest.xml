@@ -33,7 +33,7 @@
      <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1">
 
        <Hosts>
-         <Host xsi:type="WebExtensionHost"/>
+         <Host xsi:type="DesktopNativeHost"/>
        </Hosts>
 
        <Settings>
